@@ -180,7 +180,7 @@ async function showRow(table, id, box) {
     return `<tr><th>${esc(k)}</th><td>${editable ? `<textarea data-f="${esc(k)}" rows="1">${esc(v ?? '')}</textarea>` : fmt(v)}</td></tr>`;
   }).join('') + '</table>';
   if (canEdit) h += `<h3>Save changes</h3><div class="row"><input id="reason" placeholder="Reason for the change (required)"><button class="act" id="save">Save</button></div><div id="saveMsg"></div>`;
-  if (d.citations) h += `<h3>Citations (${d.citations.length})</h3><table>` + d.citations.map((c) => `<tr><td>${esc(c.source)}</td><td>${esc(c.citation || c.locator)}</td><td class="muted">${esc(c.relationship)} · ${esc(c.snapshot)}</td></tr>`).join('') + '</table>';
+  if (d.citations) h += `<h3>Citations (${d.citations.length})</h3><table>` + d.citations.map((c) => `<tr><td>${esc(c.source)}</td><td>${esc(c.citation || c.locator)}</td><td class="muted">${esc(c.relationship)} · ${esc(c.snapshot)}</td></tr>${c.quote ? `<tr><td></td><td colspan="2" style="font-style:italic">“${esc(c.quote)}”</td></tr>` : ''}`).join('') + '</table>';
   h += `<h3>Change history (${d.history.length})</h3><table>` + (d.history.map((e) => `<tr><td class="muted">${esc(e.occurred_at || e.recorded_date || '')}<br>${esc(e.actor || e.legacy_stream + ' ' + (e.legacy_event_id || ''))}</td><td><b>${esc(e.field || e.event_type)}</b> ${esc(e.reason || '')}<br>${e.old_value !== null ? 'Before: ' + fmt(e.old_value) + '<br>' : ''}${e.new_value !== null ? 'After: ' + fmt(e.new_value) : ''}</td></tr>`).join('') || '<tr><td class="muted">None</td></tr>') + '</table>';
   box.innerHTML = h;
   if (canEdit) $('save').onclick = async () => {
