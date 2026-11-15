@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TEST COPY - Safety Library Editor</title>
+<style>
+  :root { --b:#d0d4da; --muted:#5f6670; --accent:#1f5fae; --bad:#b3261e; --ok:#1e7a34; }
+  * { box-sizing:border-box; }
+  body { font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; margin:0; color:#1b1f24; background:#f6f7f9; }
+  header { border-top:6px solid #b3261e; display:flex; align-items:center; gap:16px; padding:10px 16px; background:#fff; border-bottom:1px solid var(--b); }
+  header h1 { font-size:16px; margin:0; }
+  header .who { margin-left:auto; color:var(--muted); }
+  nav button { background:none; border:0; padding:6px 10px; cursor:pointer; font:inherit; color:var(--muted); }
+  nav button.on { color:var(--accent); border-bottom:2px solid var(--accent); }
+  main { display:grid; grid-template-columns:minmax(280px,380px) 1fr; gap:16px; padding:16px; }
+  .card { background:#fff; border:1px solid var(--b); border-radius:6px; padding:12px; }
+  .full { grid-column:1 / -1; }
+  input, select, textarea { font:inherit; padding:6px 8px; border:1px solid var(--b); border-radius:4px; width:100%; }
+  textarea { min-height:60px; resize:vertical; }
+  button.act { background:var(--accent); color:#fff; border:0; border-radius:4px; padding:7px 12px; cursor:pointer; font:inherit; }
+  button.act:disabled { opacity:.5; cursor:default; }
+  button.ghost { background:#fff; color:var(--accent); border:1px solid var(--accent); border-radius:4px; padding:6px 10px; cursor:pointer; font:inherit; }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .list { max-height:70vh; overflow:auto; }
+  .item { padding:8px; border-bottom:1px solid #eef0f3; cursor:pointer; }
+  .item:hover, .item.sel { background:#eef4fc; }
+  .item b { display:block; }
+  .item span { color:var(--muted); font-size:12px; }
+  table { width:100%; border-collapse:collapse; }
+  td, th { border-bottom:1px solid #eef0f3; padding:5px 6px; vertical-align:top; text-align:left; }
+  th { width:220px; color:var(--muted); font-weight:500; }
+  .msg { padding:8px 10px; border-radius:4px; margin:8px 0; white-space:pre-wrap; }
+  .msg.bad { background:#fdecea; color:var(--bad); }
+  .msg.ok { background:#e8f5ec; color:var(--ok); }
+  .muted { color:var(--muted); }
+  .hidden { display:none; }
+  h2 { font-size:15px; margin:0 0 8px; }
+  h3 { font-size:14px; margin:14px 0 6px; }
+  .login { max-width:360px; margin:60px auto; }
+  pre { white-space:pre-wrap; word-break:break-word; margin:0; font:12px/1.4 ui-monospace,Menlo,Consolas,monospace; }
+</style>
+</head>
+<body>
+<div id="loginView" class="card login hidden">
+  <h2>Safety Library Editor <span style="color:#b3261e">TEST COPY</span></h2>
+  <div class="row"><input id="email" type="email" placeholder="Email" autocomplete="username"></div>
+  <div class="row"><input id="password" type="password" placeholder="Password" autocomplete="current-password"></div>
+  <div class="row"><button class="act" id="signIn">Sign in</button></div>
+  <div id="loginMsg"></div>
+  <p class="muted">Accounts are by invite only. A new account can't see anything until an admin gives it a role.</p>
+</div>
+
+<div id="appView" class="hidden">
+  <header>
+    <h1>Safety Library Editor <span style="color:#b3261e">TEST COPY</span></h1>
+    <nav>
+      <button data-tab="search" class="on">Search</button>
+      <button data-tab="cases">Review cases</button>
+      <button data-tab="access" id="accessTab" class="hidden">Access</button>
+    </nav>
+    <div class="who"><span id="who"></span> · <a href="#" id="signOut">Sign out</a></div>
+  </header>
+
+  <main id="searchTab">
+    <div class="card">
+      <div class="row">
+        <select id="kind" style="width:120px"><option value="records">Requirements</option><option value="sources">Sources</option><option value="tags">Tags</option></select>
+        <input id="q" placeholder="ID or words, e.g. REQ-0001 or guardrail">
+      </div>
+      <div class="row"><button class="act" id="go">Search</button><span id="count" class="muted"></span></div>
+      <div id="results" class="list"></div>
+    </div>
+    <div class="card" id="detail"><p class="muted">Pick a result to view it.</p></div>
+  </main>
+
+  <main id="casesTab" class="hidden">
+    <div class="card">
+      <div class="row">
+        <select id="caseStatus"><option value="open">Open cases</option><option value="all">All cases</option></select>
+        <button class="act" id="loadCases">Load</button>
+      </div>
+      <div class="row"><input id="caseFilter" placeholder="Filter by ID or subject"></div>
+      <div id="caseList" class="list"></div>
+    </div>
+    <div class="card" id="caseDetail"><p class="muted">Pick a case.</p></div>
+  </main>
+
+  <main id="accessTabView" class="hidden">
+    <div class="card full">
+      <h2>Access</h2>
+      <p class="muted">The person must be invited first (Supabase dashboard: Authentication, Users, Invite user). Roles: reader (search and read), editor (change library rows), reviewer (record review decisions), admin (everything plus access).</p>
+      <div class="row">
+        <input id="mEmail" placeholder="Email">
+        <select id="mRole" style="width:140px"><option>reader</option><option>editor</option><option>reviewer</option><option>admin</option></select>
+        <select id="mEnabled" style="width:120px"><option value="true">Enabled</option><option value="false">Disabled</option></select>
+      </div>
+      <div class="row"><input id="mReason" placeholder="Reason (required)"><button class="act" id="mSave">Save</button></div>
+      <div id="mMsg"></div>
+      <div id="members"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://bbobigzsthvoirpbnqfq.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJib2JpZ3pzdGh2b2lycGJucWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQyNDAyODIsImV4cCI6MjEwOTgxNjI4Mn0.SdzXxif4hsDlkTynqo-o7Xum5YpQGwK4n1p4R1nkoko';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let me = null;
+const LOCKED = new Set(['revision_no','updated_at','updated_by','created_at']);
+const REVIEW_FIELDS = ['status','disposition','independent_decision','independent_review_state','independent_reviewer','self_review','reviewer','review_date','next_action','finding','settled_component','remaining_component','review_status','evidence'];
+
+function msg(el, text, ok) { el.innerHTML = text ? `<div class="msg ${ok ? 'ok' : 'bad'}">${esc(text)}</div>` : ''; }
+async function rpc(fn, args) {
+  const { data, error } = await sb.rpc(fn, args || {});
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function start() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { $('loginView').classList.remove('hidden'); $('appView').classList.add('hidden'); return; }
+  try { me = await rpc('lib_me'); } catch (e) { me = { email: data.session.user.email, role: null }; }
+  $('loginView').classList.add('hidden'); $('appView').classList.remove('hidden');
+  $('who').textContent = `${me.email} — ${me.role || 'no role yet'}`;
+  $('accessTab').classList.toggle('hidden', me.role !== 'admin');
+  if (!me.role) $('detail').innerHTML = '<div class="msg bad">Your account has no role yet. Ask an admin to add you.</div>';
+}
+
+$('signIn').onclick = async () => {
+  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('password').value });
+  if (error) return msg($('loginMsg'), error.message);
+  start();
+};
+$('signOut').onclick = async (e) => { e.preventDefault(); await sb.auth.signOut(); location.reload(); };
+
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
+  $('searchTab').classList.toggle('hidden', b.dataset.tab !== 'search');
+  $('casesTab').classList.toggle('hidden', b.dataset.tab !== 'cases');
+  $('accessTabView').classList.toggle('hidden', b.dataset.tab !== 'access');
+  if (b.dataset.tab === 'access') loadMembers();
+});
+
+// ---------- search
+async function doSearch() {
+  $('results').innerHTML = '<p class="muted">Searching…</p>';
+  try {
+    const rows = await rpc('lib_search', { p_query: $('q').value, p_kind: $('kind').value, p_limit: 100 });
+    $('count').textContent = `${rows.length} shown${rows.length === 100 ? ' (first 100)' : ''}`;
+    $('results').innerHTML = rows.map((r) => `<div class="item" data-t="${r.tbl}" data-id="${r.id}"><b>${esc(r.legacy)}</b><span>${esc(r.title)}</span></div>`).join('') || '<p class="muted">No matches.</p>';
+    $('results').querySelectorAll('.item').forEach((el) => el.onclick = () => {
+      $('results').querySelectorAll('.item').forEach((x) => x.classList.toggle('sel', x === el));
+      showRow(el.dataset.t, el.dataset.id, $('detail'));
+    });
+  } catch (e) { msg($('results'), e.message); }
+}
+$('go').onclick = doSearch;
+$('q').onkeydown = (e) => { if (e.key === 'Enter') doSearch(); };
+
+function fmt(v) {
+  if (v === null || v === undefined) return '<span class="muted">—</span>';
+  if (typeof v === 'object') return `<pre>${esc(JSON.stringify(v, null, 1))}</pre>`;
+  return esc(v);
+}
+
+async function showRow(table, id, box) {
+  box.innerHTML = '<p class="muted">Loading…</p>';
+  let d;
+  try { d = await rpc('lib_get', { p_table: table, p_id: id }); } catch (e) { return msg(box, e.message); }
+  const row = d.row, canEdit = ['editor','admin'].includes(me.role) && table !== 'review_cases';
+  const legacyKey = Object.keys(row).find((k) => k.startsWith('legacy_'));
+  const pk = Object.keys(row)[0];
+  let h = `<h2>${esc(row[legacyKey] || id)} <span class="muted">${esc(table)}${row.revision_no ? ' · revision ' + row.revision_no : ''}</span></h2>`;
+  h += '<table>' + Object.entries(row).map(([k, v]) => {
+    const editable = canEdit && !LOCKED.has(k) && k !== pk && k !== legacyKey && !k.endsWith('_id') && (v === null || typeof v !== 'object');
+    return `<tr><th>${esc(k)}</th><td>${editable ? `<textarea data-f="${esc(k)}" rows="1">${esc(v ?? '')}</textarea>` : fmt(v)}</td></tr>`;
+  }).join('') + '</table>';
+  if (canEdit) h += `<h3>Save changes</h3><div class="row"><input id="reason" placeholder="Reason for the change (required)"><button class="act" id="save">Save</button></div><div id="saveMsg"></div>`;
+  if (d.citations) h += `<h3>Citations (${d.citations.length})</h3><table>` + d.citations.map((c) => `<tr><td>${esc(c.source)}</td><td>${esc(c.citation || c.locator)}</td><td class="muted">${esc(c.relationship)} · ${esc(c.snapshot)}</td></tr>`).join('') + '</table>';
+  h += `<h3>Change history (${d.history.length})</h3><table>` + (d.history.map((e) => `<tr><td class="muted">${esc(e.occurred_at || e.recorded_date || '')}<br>${esc(e.actor || e.legacy_stream + ' ' + (e.legacy_event_id || ''))}</td><td><b>${esc(e.field || e.event_type)}</b> ${esc(e.reason || '')}<br>${e.old_value !== null ? 'Before: ' + fmt(e.old_value) + '<br>' : ''}${e.new_value !== null ? 'After: ' + fmt(e.new_value) : ''}</td></tr>`).join('') || '<tr><td class="muted">None</td></tr>') + '</table>';
+  box.innerHTML = h;
+  if (canEdit) $('save').onclick = async () => {
+    const changes = {};
+    box.querySelectorAll('textarea[data-f]').forEach((t) => {
+      const k = t.dataset.f, oldV = row[k] === null || row[k] === undefined ? '' : String(row[k]);
+      if (t.value !== oldV) changes[k] = t.value === '' ? null : t.value;
+    });
+    if (!Object.keys(changes).length) return msg($('saveMsg'), 'Nothing changed.');
+    if (!$('reason').value.trim()) return msg($('saveMsg'), 'A reason is required.');
+    $('save').disabled = true;
+    try {
+      const r = await rpc('lib_edit', { p_table: table, p_id: id, p_changes: changes, p_reason: $('reason').value.trim(), p_expected_revision: row.revision_no ?? null });
+      await showRow(table, id, box);
+      msg($('saveMsg') || box, `Saved ${r.fields_changed} field(s).${r.review_case_id ? ' A review case was opened for affected rows.' : ''}`, true);
+    } catch (e) { $('save').disabled = false; msg($('saveMsg'), e.message); }
+  };
+}
+
+// ---------- review cases
+let cases = [];
+async function loadCases() {
+  $('caseList').innerHTML = '<p class="muted">Loading…</p>';
+  try { cases = await rpc('lib_cases', { p_status: $('caseStatus').value, p_limit: 1000 }); renderCases(); }
+  catch (e) { msg($('caseList'), e.message); }
+}
+function renderCases() {
+  const f = $('caseFilter').value.toLowerCase();
+  const shown = cases.filter((c) => !f || (c.legacy + ' ' + c.subject).toLowerCase().includes(f));
+  $('caseList').innerHTML = shown.map((c) => `<div class="item" data-id="${c.id}"><b>${esc(c.legacy)} <span>· ${esc(c.status || '')}</span></b><span>${esc(c.subject)} · ${c.targets} target(s)</span></div>`).join('') || '<p class="muted">No cases.</p>';
+  $('caseList').querySelectorAll('.item').forEach((el) => el.onclick = () => {
+    $('caseList').querySelectorAll('.item').forEach((x) => x.classList.toggle('sel', x === el));
+    showCase(el.dataset.id);
+  });
+}
+$('loadCases').onclick = loadCases;
+$('caseFilter').oninput = renderCases;
+
+async function showCase(id) {
+  const box = $('caseDetail');
+  box.innerHTML = '<p class="muted">Loading…</p>';
+  let d;
+  try { d = await rpc('lib_case', { p_id: id }); } catch (e) { return msg(box, e.message); }
+  const row = d.row, canReview = ['reviewer','admin'].includes(me.role);
+  let h = `<h2>${esc(row.legacy_case_id)} <span class="muted">${esc(row.case_kind || '')}</span></h2><table>` +
+    Object.entries(row).filter(([k, v]) => v !== null && !REVIEW_FIELDS.includes(k)).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${fmt(v)}</td></tr>`).join('') + '</table>';
+  h += `<h3>Review decision</h3><table>` + REVIEW_FIELDS.map((k) => `<tr><th>${k}</th><td>${canReview ? `<textarea data-f="${k}" rows="1">${esc(row[k] ?? '')}</textarea>` : fmt(row[k])}</td></tr>`).join('') + '</table>';
+  if (canReview) h += `<div class="row" style="margin-top:8px"><input id="rReason" placeholder="Reason (required)"><button class="act" id="rSave">Save decision</button></div><div id="rMsg"></div>`;
+  h += `<h3>Targets (${d.targets.length})</h3><table>` + (d.targets.map((t) => `<tr><td>${esc(t.kind)}</td><td>${t.table ? `<a href="#" data-t="${t.table}" data-id="${t.id}">${esc(t.label)}</a>` : esc(t.label)}</td><td class="muted">${esc(t.scope || '')}</td></tr>`).join('') || '<tr><td class="muted">None</td></tr>') + '</table>';
+  h += `<h3>Change history (${d.history.length})</h3><table>` + (d.history.map((e) => `<tr><td class="muted">${esc(e.occurred_at || '')}<br>${esc(e.actor || '')}</td><td><b>${esc(e.field || e.event_type)}</b> ${esc(e.reason || '')}</td></tr>`).join('') || '<tr><td class="muted">None</td></tr>') + '</table>';
+  box.innerHTML = h;
+  box.querySelectorAll('a[data-t]').forEach((a) => a.onclick = (e) => { e.preventDefault(); document.querySelector('nav button[data-tab=search]').click(); showRow(a.dataset.t, a.dataset.id, $('detail')); });
+  if (canReview) $('rSave').onclick = async () => {
+    const changes = {};
+    box.querySelectorAll('textarea[data-f]').forEach((t) => { const k = t.dataset.f, o = row[k] ?? ''; if (t.value !== String(o)) changes[k] = t.value === '' ? null : t.value; });
+    if (!Object.keys(changes).length) return msg($('rMsg'), 'Nothing changed.');
+    if (!$('rReason').value.trim()) return msg($('rMsg'), 'A reason is required.');
+    try { await rpc('lib_review', { p_case_id: id, p_changes: changes, p_reason: $('rReason').value.trim() }); await showCase(id); msg($('rMsg'), 'Decision saved.', true); }
+    catch (e) { msg($('rMsg'), e.message); }
+  };
+}
+
+// ---------- access
+async function loadMembers() {
+  try {
+    const m = await rpc('lib_members');
+    $('members').innerHTML = '<table><tr><th>Email</th><th>Role</th><th>Enabled</th><th>Updated</th></tr>' + m.map((x) => `<tr><td>${esc(x.email)}</td><td>${esc(x.role)}</td><td>${x.enabled ? 'Yes' : 'No'}</td><td class="muted">${esc(x.updated_at)}</td></tr>`).join('') + '</table>';
+  } catch (e) { msg($('members'), e.message); }
+}
+$('mSave').onclick = async () => {
+  try {
+    await rpc('lib_set_member', { p_email: $('mEmail').value.trim(), p_role: $('mRole').value, p_enabled: $('mEnabled').value === 'true', p_reason: $('mReason').value.trim() });
+    msg($('mMsg'), 'Saved.', true); loadMembers();
+  } catch (e) { msg($('mMsg'), e.message); }
+};
+
+sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') start(); });
+start();
+</script>
+</body>
+</html>

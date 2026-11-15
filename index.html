@@ -46,9 +46,9 @@
   <h2>Safety Library Editor</h2>
   <div class="row"><input id="email" type="email" placeholder="Email" autocomplete="username"></div>
   <div class="row"><input id="password" type="password" placeholder="Password" autocomplete="current-password"></div>
-  <div class="row"><button class="act" id="signIn">Sign in</button><button class="ghost" id="signUp">Create account</button></div>
+  <div class="row"><button class="act" id="signIn">Sign in</button></div>
   <div id="loginMsg"></div>
-  <p class="muted">A new account can't see anything until an admin gives it a role.</p>
+  <p class="muted">Accounts are by invite only. A new account can't see anything until an admin gives it a role.</p>
 </div>
 
 <div id="appView" class="hidden">
@@ -89,7 +89,7 @@
   <main id="accessTabView" class="hidden">
     <div class="card full">
       <h2>Access</h2>
-      <p class="muted">The person must create an account first. Roles: reader (search and read), editor (change library rows), reviewer (record review decisions), admin (everything plus access).</p>
+      <p class="muted">The person must be invited first (Supabase dashboard: Authentication, Users, Invite user). Roles: reader (search and read), editor (change library rows), reviewer (record review decisions), admin (everything plus access).</p>
       <div class="row">
         <input id="mEmail" placeholder="Email">
         <select id="mRole" style="width:140px"><option>reader</option><option>editor</option><option>reviewer</option><option>admin</option></select>
@@ -134,10 +134,6 @@ $('signIn').onclick = async () => {
   const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('password').value });
   if (error) return msg($('loginMsg'), error.message);
   start();
-};
-$('signUp').onclick = async () => {
-  const { error } = await sb.auth.signUp({ email: $('email').value.trim(), password: $('password').value });
-  msg($('loginMsg'), error ? error.message : 'Account created. Check your email to confirm it, then sign in.', !error);
 };
 $('signOut').onclick = async (e) => { e.preventDefault(); await sb.auth.signOut(); location.reload(); };
 
